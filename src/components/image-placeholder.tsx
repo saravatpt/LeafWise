@@ -46,9 +46,6 @@ export function ImagePlaceholder({ onImageSelect, currentImage }: ImagePlacehold
           <p className="text-center text-muted-foreground font-medium">
             Tap to scan or upload plant image
           </p>
-          <p className="text-xs text-center text-muted-foreground/80 mt-2">
-            (AI image identification coming soon!)
-          </p>
         </>
       )}
     </div>

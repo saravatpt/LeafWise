@@ -6,26 +6,18 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Search, Video, UploadCloud, AlertCircle } from 'lucide-react';
+import { Loader2, Search, Video, UploadCloud, AlertCircle, Leaf } from 'lucide-react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { PlantInfoDisplay } from '@/components/plant-info-display';
 import { generatePlantDescription, type GeneratePlantDescriptionOutput } from '@/ai/flows/generate-plant-description';
 import { generatePlantCareTips, type GeneratePlantCareTipsOutput } from '@/ai/flows/generate-plant-care-tips';
-// We'll create this flow in a moment
-// import { identifyPlantFromImage, type IdentifyPlantFromImageInput, type IdentifyPlantFromImageOutput } from '@/ai/flows/identify-plant-from-image';
+import { identifyPlantFromImage, type IdentifyPlantFromImageOutput } from '@/ai/flows/identify-plant-from-image';
 
 const formSchema = z.object({
-  plantName: z.string().min(2, {
-    message: "Plant name must be at least 2 characters.",
-  }).optional(), // Making plantName optional if image is provided
-  plantImage: z.custom<File>((val) => val instanceof File, "Please upload an image file.").optional(),
-}).refine(data => data.plantName || data.plantImage, {
-  message: "Either plant name or plant image must be provided.",
-  path: ["plantName"], // You can also set this to a general form error
+  plantImage: z.custom<File>((val) => val instanceof File, "Please upload an image file."),
 });
 
 interface PlantData {
@@ -50,9 +42,7 @@ export function PlantIdentifierForm() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      plantName: "",
-    },
+    defaultValues: {},
   });
 
   useEffect(() => {
@@ -63,7 +53,7 @@ export function PlantIdentifierForm() {
       };
       reader.readAsDataURL(selectedImageFile);
       form.setValue("plantImage", selectedImageFile);
-      form.clearErrors("plantName"); // Clear error if image is now provided
+      form.clearErrors("plantImage"); 
     } else {
       setSelectedImageUrl(null);
       form.setValue("plantImage", undefined);
@@ -82,7 +72,7 @@ export function PlantIdentifierForm() {
         } catch (error) {
           console.error('Error accessing camera:', error);
           setHasCameraPermission(false);
-          setShowCamera(false); // Hide camera view if permission denied
+          setShowCamera(false); 
           toast({
             variant: 'destructive',
             title: 'Camera Access Denied',
@@ -90,7 +80,6 @@ export function PlantIdentifierForm() {
           });
         }
       } else {
-        // Stop camera stream when not shown
         if (videoRef.current && videoRef.current.srcObject) {
           const stream = videoRef.current.srcObject as MediaStream;
           stream.getTracks().forEach(track => track.stop());
@@ -99,7 +88,6 @@ export function PlantIdentifierForm() {
       }
     };
     getCameraPermission();
-    // Cleanup function to stop camera when component unmounts or showCamera changes
     return () => {
       if (videoRef.current && videoRef.current.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream;
@@ -111,7 +99,7 @@ export function PlantIdentifierForm() {
 
   const handleImageSelect = (file: File) => {
     setSelectedImageFile(file);
-    setShowCamera(false); // Hide camera if file is uploaded
+    setShowCamera(false); 
   };
 
   const captureImageFromVideo = () => {
@@ -143,56 +131,43 @@ export function PlantIdentifierForm() {
     setIsLoading(true);
     setPlantData(null);
 
-    let plantNameToIdentify = values.plantName;
-    let identifiedPlantScientificName = values.plantName || "Unknown Plant";
-    let identifiedPlantFamily = "To be determined";
+    if (!selectedImageFile || !selectedImageUrl) {
+      toast({
+        title: "Image Required",
+        description: "Please upload or capture an image of the plant.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    let plantNameToIdentify = "Identified Plant"; // Default if AI fails partially
+    let identifiedPlantScientificName = "N/A";
+    let identifiedPlantFamily = "N/A";
 
     try {
-      // If an image is provided, try to identify it first (placeholder for now)
-      if (selectedImageFile && selectedImageUrl) {
-        // Placeholder for actual AI image identification:
-        // const imageDataUri = selectedImageUrl; // This is already a data URI
-        // const imageIdentificationResult = await identifyPlantFromImage({ photoDataUri: imageDataUri });
-        // if (imageIdentificationResult?.identification?.commonName) {
-        //   plantNameToIdentify = imageIdentificationResult.identification.commonName;
-        //   identifiedPlantScientificName = imageIdentificationResult.identification.latinName || plantNameToIdentify;
-        //   identifiedPlantFamily = imageIdentificationResult.identification.family || "N/A";
-        //   form.setValue("plantName", plantNameToIdentify); // Update form if AI identified a name
-        //   toast({ title: "Plant Identified from Image!", description: `Identified as ${plantNameToIdentify}. Fetching details...`});
-        // } else {
-        //   toast({ title: "Image Identification Note", description: "Could not identify plant from image. Using provided name or default.", variant: "default" });
-        // }
-         toast({ title: "Image Submitted", description: "Image processing is a TODO. Using text input if available.", variant: "default" });
-      }
+      const imageDataUri = selectedImageUrl; // This is already a data URI
       
-      if (!plantNameToIdentify && !selectedImageFile) {
-         toast({
-          title: "Input Required",
-          description: "Please enter a plant name or upload an image.",
-          variant: "destructive",
-        });
+      toast({ title: "Identifying Plant...", description: "Please wait while we analyze the image."});
+      const imageIdentificationResult: IdentifyPlantFromImageOutput = await identifyPlantFromImage({ photoDataUri: imageDataUri });
+
+      if (!imageIdentificationResult?.identification?.isPlant) {
+        toast({ title: "Not a Plant?", description: "We couldn't identify a plant in the image. Please try another image.", variant: "destructive" });
         setIsLoading(false);
         return;
       }
       
-      // Fallback to entered name if no image or image identification fails
-      if (!plantNameToIdentify && selectedImageFile) {
-        plantNameToIdentify = "Plant from Image"; // Generic name if only image is provided and no AI
+      if (imageIdentificationResult.identification.commonName) {
+        plantNameToIdentify = imageIdentificationResult.identification.commonName;
+        identifiedPlantScientificName = imageIdentificationResult.identification.latinName || "N/A";
+        identifiedPlantFamily = imageIdentificationResult.identification.family || "N/A";
+        toast({ title: "Plant Identified!", description: `Identified as ${plantNameToIdentify}. Fetching details...`});
+      } else {
+        toast({ title: "Identification Unclear", description: "Could not confidently identify the plant species. Displaying generic information if possible.", variant: "default" });
+        // We can still try to get generic description/care tips if it's a plant but not specifically named
+        plantNameToIdentify = "Plant (species unclear)";
       }
-
-
-      if(!plantNameToIdentify) {
-        // This case should ideally be caught by form validation, but as a safeguard:
-        toast({
-          title: "Missing Information",
-          description: "Please provide a plant name or image.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-
+      
       const descriptionOutput = await generatePlantDescription({
         plantName: plantNameToIdentify,
         scientificName: identifiedPlantScientificName,
@@ -200,12 +175,13 @@ export function PlantIdentifierForm() {
       });
 
       if (!descriptionOutput || !descriptionOutput.description) {
-        throw new Error("Failed to generate plant description.");
+        // Don't throw an error here, as care tips might still be generated
+        toast({ title: "Description Note", description: "Could not generate a detailed plant description.", variant: "default" });
       }
       
       const careTipsOutput = await generatePlantCareTips({
         plantName: plantNameToIdentify,
-        plantDescription: descriptionOutput.description,
+        plantDescription: descriptionOutput?.description || "A plant identified from an image.",
       });
 
       setPlantData({
@@ -214,20 +190,29 @@ export function PlantIdentifierForm() {
         family: identifiedPlantFamily,
         descriptionData: descriptionOutput,
         careTipsData: careTipsOutput,
-        imageUrl: selectedImageUrl // Keep displaying the selected/captured image
+        imageUrl: selectedImageUrl 
       });
 
-      toast({
-        title: "Plant Info Ready!",
-        description: `Details for ${plantNameToIdentify} are now available.`,
-        variant: "default",
-      });
+      if (descriptionOutput?.description || careTipsOutput?.wateringFrequency) {
+         toast({
+          title: "Plant Info Ready!",
+          description: `Details for ${plantNameToIdentify} are now available.`,
+          variant: "default",
+        });
+      } else {
+         toast({
+          title: "Limited Info",
+          description: `We found some basic info for ${plantNameToIdentify}.`,
+          variant: "default",
+        });
+      }
+
 
     } catch (error) {
       console.error("Error processing plant info:", error);
       toast({
         title: "Error",
-        description: "Could not fetch plant details. Please try again.",
+        description: "An error occurred while fetching plant details. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -279,28 +264,24 @@ export function PlantIdentifierForm() {
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 bg-card p-6 sm:p-8 rounded-lg shadow-md">
-          <FormField
-            control={form.control}
-            name="plantName"
+          {/* Hidden field for image, handled by ImagePlaceholder logic */}
+          <FormField 
+            control={form.control} 
+            name="plantImage" 
             render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-lg font-semibold">Plant Name (Optional if image provided)</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="e.g., Sunflower, Rose, Ficus" 
-                    {...field} 
-                    className="text-base py-3 px-4"
-                    aria-label="Enter plant name"
-                  />
-                </FormControl>
+              <FormItem className="hidden"> {/* Visually hide, but keep for form state */}
+                <FormControl><input type="file" {...field} value={undefined} /></FormControl>
                 <FormMessage />
               </FormItem>
-            )}
+            )} 
           />
-          {/* Hidden field for image, handled by ImagePlaceholder logic */}
-          <FormField control={form.control} name="plantImage" render={({ field }) => <FormItem><FormControl><input type="hidden" {...field} /></FormControl><FormMessage /></FormItem>} />
           
-          <Button type="submit" className="w-full text-lg py-6 bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isLoading}>
+          <Button 
+            type="submit" 
+            className="w-full text-lg py-6 bg-accent hover:bg-accent/90 text-accent-foreground" 
+            disabled={isLoading || !selectedImageFile}
+            aria-label="Get plant information from uploaded image"
+          >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -308,11 +289,14 @@ export function PlantIdentifierForm() {
               </>
             ) : (
               <>
-                <Search className="mr-2 h-5 w-5" />
-                Get Plant Info
+                <Leaf className="mr-2 h-5 w-5" />
+                Identify My Plant
               </>
             )}
           </Button>
+          {!selectedImageFile && !isLoading && (
+            <p className="text-sm text-muted-foreground text-center">Please select or capture an image first.</p>
+          )}
         </form>
       </Form>
 

@@ -9,7 +9,7 @@ export default function Home() {
           Welcome to LeafWise
         </h1>
         <p className="text-lg sm:text-xl text-muted-foreground max-w-xl lg:max-w-2xl mx-auto">
-          Snap a photo, type a name, or use your camera. Discover the fascinating world of plants, get detailed info, and learn how to care for them.
+          Snap a photo or use your camera. LeafWise will identify the plant, provide details, and offer care tips.
         </p>
       </div>
       <PlantIdentifierForm />
