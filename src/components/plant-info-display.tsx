@@ -1,8 +1,10 @@
+
 import type { GeneratePlantDescriptionOutput } from '@/ai/flows/generate-plant-description';
 import type { GeneratePlantCareTipsOutput } from '@/ai/flows/generate-plant-care-tips';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Droplets, Info, Sun, Leaf } from 'lucide-react';
+import { Droplets, Info, Sun, Leaf, Image as ImageIcon } from 'lucide-react';
+import Image from 'next/image'; // For displaying the uploaded image
 
 interface PlantInfoProps {
   plantName: string;
@@ -10,10 +12,11 @@ interface PlantInfoProps {
   family?: string;
   descriptionData?: GeneratePlantDescriptionOutput;
   careTipsData?: GeneratePlantCareTipsOutput;
+  imageUrl?: string | null; // Add imageUrl to props
 }
 
-export function PlantInfoDisplay({ plantName, scientificName, family, descriptionData, careTipsData }: PlantInfoProps) {
-  if (!descriptionData && !careTipsData) {
+export function PlantInfoDisplay({ plantName, scientificName, family, descriptionData, careTipsData, imageUrl }: PlantInfoProps) {
+  if (!descriptionData && !careTipsData && !imageUrl) {
     return null;
   }
 
@@ -21,7 +24,13 @@ export function PlantInfoDisplay({ plantName, scientificName, family, descriptio
     <Card className="w-full max-w-2xl mx-auto shadow-lg">
       <CardHeader className="bg-primary/10 rounded-t-lg">
         <div className="flex items-center gap-3">
-          <Leaf className="w-10 h-10 text-primary" />
+          {imageUrl ? (
+            <div className="w-16 h-16 rounded-md overflow-hidden relative shadow-md border border-primary/20">
+              <Image src={imageUrl} alt={plantName} layout="fill" objectFit="cover" />
+            </div>
+          ) : (
+            <Leaf className="w-10 h-10 text-primary flex-shrink-0" />
+          )}
           <div>
             <CardTitle className="text-3xl font-bold text-primary">{plantName}</CardTitle>
             {(scientificName || family) && (
@@ -35,13 +44,25 @@ export function PlantInfoDisplay({ plantName, scientificName, family, descriptio
         </div>
       </CardHeader>
       <CardContent className="p-6">
-        <Accordion type="multiple" defaultValue={['description', 'care-tips']} className="w-full">
+        <Accordion type="multiple" defaultValue={['description', 'care-tips', 'image']} className="w-full">
+          {imageUrl && (
+            <AccordionItem value="image">
+              <AccordionTrigger className="text-lg font-semibold hover:text-accent">
+                <ImageIcon className="w-5 h-5 mr-2 text-accent" /> Image
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="relative aspect-video w-full max-w-md mx-auto rounded-md overflow-hidden shadow-md border">
+                  <Image src={imageUrl} alt={`Image of ${plantName}`} layout="fill" objectFit="contain" />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          )}
           {descriptionData?.description && (
             <AccordionItem value="description">
               <AccordionTrigger className="text-lg font-semibold hover:text-accent">
                 <Info className="w-5 h-5 mr-2 text-accent" /> Description
               </AccordionTrigger>
-              <AccordionContent className="text-foreground/80 prose dark:prose-invert">
+              <AccordionContent className="text-foreground/80 prose dark:prose-invert max-w-none">
                 {descriptionData.description}
               </AccordionContent>
             </AccordionItem>
