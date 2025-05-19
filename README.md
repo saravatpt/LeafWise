@@ -17,5 +17,5 @@ This is a Next.js application built within Firebase Studio that leverages Genkit
 1. **Install Dependencies:**
 
 **Demo**
-<video controls src="LeafWise-Demo.mp4" title="Title"></video>
+[<video controls src="LeafWise-Demo.mp4" title="Title"></video>](https://youtu.be/hOHbt1ebLCY)
 
