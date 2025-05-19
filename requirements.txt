@@ -1,0 +1,7 @@
+next
+react
+react-dom
+tailwindcss
+shadcn-ui
+genkit
+typescript
