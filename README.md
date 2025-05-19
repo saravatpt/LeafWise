@@ -17,6 +17,6 @@ This is a Next.js application built within Firebase Studio that leverages Genkit
 1. **Install Dependencies:**
 
 **Demo**
-[![AI Did My Groceries](https://github.com/user-attachments/assets/d9359085-bde6-41d4-aa4e-6520d0221872)](https://www.youtube.com/watch?v=L2Ya9PYNns8)
-[<video controls src="LeafWise-Demo.mp4" title="Title"></video>](https://youtu.be/hOHbt1ebLCY)
+[Watch the demo video](/LeafWise-Demo.mp4)
+
 
